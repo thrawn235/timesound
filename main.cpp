@@ -45,6 +45,18 @@ class TimeEngine
 		}
 		return false;
 	}
+	bool LaterAsLastEvent(double time) //probably not very usable every object needs to keep track of its own events
+	{
+	}
+	bool LaterAsFromEvent(steady_clock::time_point Event, double time)
+	{
+	}
+	double TimeDifference(steady_clock::time_point time1, steady_clock::time_point time2)
+	{
+	}
+	steady_clock::time_point Now()
+	{
+	}
 	void Wait(int timespan)
 	{
 		steady_clock::time_point waitPoint = steady_clock::now();
