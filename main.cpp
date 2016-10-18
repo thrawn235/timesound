@@ -1,56 +1,123 @@
 #include <iostream>
 #include <chrono>
 #include <portaudio.h>
+#include <math.h>
+#include <vector>
 using namespace std;
 using namespace chrono;
 
-struct paTestData
+struct StereoData
 {
 	float left_phase;
 	float right_phase;
-};
-
-static int PaTestCallback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData)
-{
-	paTestData *data = (paTestData*)userData;
-	float *out = (float*)outputBuffer;
-	(void) inputBuffer; //prevent unused variable warning
-	
-	for(unsigned int i = 0; i < framesPerBuffer; i++)
-	{
-		*out++ = data->left_phase;
-		*out++ = data->right_phase;
-		data->left_phase += 0.01;
-		if(data->left_phase >= 1)
-		{
-			data->left_phase -= 2;
-		}
-		data->right_phase += 0.03;
-		if(data->right_phase >= 1)
-		{
-			data->right_phase -= 2;
-		}
-	}
-	
-	return 0;
 };
 
 class SoundEngine
 {
 	private:
 	PaStream *stream;
+	PaStreamParameters inputParameters, outputParameters;
+	const PaDeviceInfo *inputInfo, *outputInfo;
+	
+	vector<StereoData> soundtrack;
+	StereoData test[50000];
+	
 	
 	public:
 	SoundEngine()
+	{	
+		vector<StereoData> workPiece = GenSinus(500,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSilence(44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(50,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSilence(44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(100,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(200,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(500,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(1000,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(2000,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(5000,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSinus(10000,44100);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		workPiece = GenSilence(44100*10);
+		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
+		workPiece.clear();
+		
+	}
+	vector<StereoData> GenSilence(int Frames)
 	{
+		vector<StereoData> Data;
+		for(int i = 0; i < Frames; i++)
+		{
+			StereoData Silence;
+			Silence.left_phase = 0;
+			Silence.right_phase = 0;
+			Data.push_back(Silence);
+		}
+		return Data;
+	}
+	vector<StereoData> GenSinus(int Frequency, int Frames)
+	{
+		vector<StereoData> Data;
+		for(int i = 0; i < Frames; i++)
+		{
+			StereoData Silence;
+			Silence.left_phase = (float) sin(((double)i/((double)44100/Frequency)) * 3.1415 * 2.);;
+			Silence.right_phase = (float) sin(((double)i/((double)44100/Frequency)) * 3.1415 * 2.);;
+			Data.push_back(Silence);
+		}
+		return Data;
+	}
+	void PlayNow(vector<StereoData> effect)
+	{
+		soundtrack.insert(soundtrack.begin(),effect.begin(), effect.end()); 
 	}
 	void Init()
 	{
 		Pa_Initialize();
-	
-		static paTestData data;
-		Pa_OpenDefaultStream(&stream, 0, 2, paFloat32, 44100, 256, PaTestCallback, &data);
+		
+		inputParameters.device = Pa_GetDefaultInputDevice();
+		inputInfo = Pa_GetDeviceInfo(inputParameters.device);
+		outputParameters.device = Pa_GetDefaultOutputDevice();
+		outputInfo = Pa_GetDeviceInfo(outputParameters.device);
+		
+		inputParameters.channelCount = 2;
+		inputParameters.sampleFormat = paFloat32;
+		inputParameters.suggestedLatency = inputInfo->defaultHighInputLatency;
+		inputParameters.hostApiSpecificStreamInfo = NULL;
+		
+		outputParameters.channelCount = 2;
+		outputParameters.sampleFormat = paFloat32;
+		outputParameters.suggestedLatency = outputInfo->defaultHighOutputLatency;
+		outputParameters.hostApiSpecificStreamInfo = NULL;
+		
+		Pa_OpenStream(&stream, &inputParameters, &outputParameters, 44100, 2048, paClipOff, NULL, NULL);
 		Pa_StartStream(stream);
+	}
+	void FeedStream()
+	{	
+		Pa_WriteStream(stream, soundtrack.data() , 2048);
+		soundtrack.erase(soundtrack.begin(), soundtrack.begin()+2048);
 	}
 	void Terminate()
 	{
@@ -155,10 +222,12 @@ int main()
 	{
 		//get init timestamp
 		Time.InitTimeStamp();
+		Sound.FeedStream();
 		
 		if(Time.LaterAsOnce(5000))
 		{
 			cout<<"5 seconds over!"<<endl;
+			Sound.PlayNow(Sound.GenSinus(800, 44100*5));
 		}
 		
 		//subtract current time from timestamp
