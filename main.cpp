@@ -20,13 +20,13 @@ class SoundEngine
 	const PaDeviceInfo *inputInfo, *outputInfo;
 	
 	vector<StereoData> soundtrack;
-	StereoData test[50000];
 	
 	
 	public:
 	SoundEngine()
 	{	
 		vector<StereoData> workPiece = GenSinus(500,44100);
+		ChangeVolume(workPiece,0.2);
 		soundtrack.insert(soundtrack.end(), workPiece.begin(), workPiece.end());
 		workPiece.clear();
 		workPiece = GenSilence(44100);
@@ -90,7 +90,20 @@ class SoundEngine
 	}
 	void PlayNow(vector<StereoData> effect)
 	{
-		soundtrack.insert(soundtrack.begin(),effect.begin(), effect.end()); 
+		for(unsigned long i = 0; i < effect.size(); i++)
+		{
+			soundtrack[i].left_phase = soundtrack[i].left_phase + effect[i].left_phase;
+			soundtrack[i].right_phase = soundtrack[i].right_phase + effect[i].right_phase;
+		}
+	}
+	vector<StereoData> ChangeVolume(vector<StereoData> Input, float Factor)
+	{
+		for(unsigned long i = 0; i < Input.size(); i++)
+		{
+			Input[i].left_phase = Input[i].left_phase * Factor;
+			Input[i].right_phase = Input[i].right_phase * Factor;
+		}
+		return Input;
 	}
 	void Init()
 	{
@@ -227,7 +240,7 @@ int main()
 		if(Time.LaterAsOnce(5000))
 		{
 			cout<<"5 seconds over!"<<endl;
-			Sound.PlayNow(Sound.GenSinus(800, 44100*5));
+			Sound.PlayNow(Sound.ChangeVolume(Sound.GenSinus(800, 44100*5),0.1));
 		}
 		
 		//subtract current time from timestamp
